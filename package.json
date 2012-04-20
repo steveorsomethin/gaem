@@ -1,0 +1,23 @@
+{
+  "name": "gaem",
+  "version": "0.0.1",
+  "description": "Moody planetoids n shi-",
+  "homepage": "https://github.com/steveorsomethin/gaem",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/steveorsomethin/gaem"
+  },
+  "author": {
+    "name": "Steve McGuire",
+    "email": "steveorsomethin@gmail.com",
+    "url": "https://github.com/steveorsomethin"
+  },
+  "engines: ": {
+    "node": "0.6.x"
+  },
+  "dependencies": {
+    "express": "2.x.x",
+    "async": "0.x.x",
+    "amdefine": "0.x.x"
+  }
+}
