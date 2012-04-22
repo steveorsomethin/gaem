@@ -26,7 +26,7 @@ define([
       dynamicsWorld,
       lastTime = Date.now(),
       transform = new Ammo.btTransform(),
-      relativeForce = new Ammo.btVector3(2000, 0 , 1000);
+      relativeForce = new Ammo.btVector3(2000, 0 , 0);
     
     var player = {
        width: 20,
@@ -44,6 +44,50 @@ define([
         x: 0,
         y: 0,
         z: 0
+    };
+    
+    var keys = {
+      w: false,
+      a: false,
+      s: false,
+      d: false
+    };
+    
+    var pointAt = function(body, targetVector) {
+      body.getMotionState().getWorldTransform(transform);
+      var bodyMatrix = transform.getBasis();
+      var bodyOrigin = transform.getOrigin();
+      var originCopy = new Ammo.btVector3(bodyOrigin.x(), bodyOrigin.y(), bodyOrigin.z());
+      originCopy.op_mul(-1).normalize();
+      
+      var xAxis = bodyMatrix.getRow(0);
+      var yAxis = bodyMatrix.getRow(1);
+      var zAxis = bodyMatrix.getRow(2);
+      
+      var matrix = new Three.Matrix4(
+        xAxis.x(), xAxis.y(), xAxis.z(), 0,
+        yAxis.x(), yAxis.y(), yAxis.z(), 0,
+        zAxis.x(), zAxis.y(), zAxis.z(), 0
+      );
+      
+      matrix.lookAt(
+        new Three.Vector3(bodyOrigin.x(), bodyOrigin.y(), bodyOrigin.z()),
+        new Three.Vector3(targetVector.x(), targetVector.y(), targetVector.z()),
+        new Three.Vector3(originCopy.x(), originCopy.y(), originCopy.z())
+      );
+      
+      var matrix90 = new Three.Matrix4();
+      matrix90.setRotationX(90 * 3.14 / 180);
+      
+      matrix.multiplySelf(matrix90);
+      
+      bodyMatrix.setValue(
+        matrix.n11, matrix.n12, matrix.n13,
+        matrix.n21, matrix.n22, matrix.n23,
+        matrix.n31, matrix.n32, matrix.n33
+      );
+      
+      return transform;
     };
     
     var initAmmo = function() {
@@ -114,6 +158,9 @@ define([
             new Ammo.btBoxShape(
               new Ammo.btVector3(ground.width / 2, ground.height / 2, ground.depth / 2)
             ), 
+             // new Ammo.btSphereShape(
+             //    new Ammo.btVector3(ground.width / 2)
+             //  ),
             new Ammo.btVector3(0, 0, 0)
           )
         );
@@ -125,6 +172,7 @@ define([
       ground.view = (function() {
         var view = Three.SceneUtils.createMultiMaterialObject(
           new Three.CubeGeometry(ground.width, ground.height, ground.depth, 4, 4, 4 ),
+          //new Three.SphereGeometry(ground.width / 2, 20, 20 ),
           [
             new Three.MeshLambertMaterial( 
               {ambient: 0xff1f1f, color: 0xffffff} 
@@ -167,10 +215,6 @@ define([
         dynamicsWorld.addRigidBody(body);
         
         body.getWorldTransform(transform);
-
-        var boxRot = transform.getBasis();
-        var correctedForce = boxRot.op_mul(relativeForce);
-        body.applyCentralForce(correctedForce);
         
         return body;
       })();
@@ -214,13 +258,23 @@ define([
       dynamicsWorld.stepSimulation(dt, 2);
       
       player.body.getMotionState().getWorldTransform(transform);
-      var origin = transform.getOrigin();
       
+      if(keys.w) {
+        var boxRot = transform.getBasis();
+        var correctedForce = boxRot.op_mul(relativeForce);
+        player.body.applyCentralForce(correctedForce);
+        player.body.activate();
+      }
+      
+      var origin = transform.getOrigin();
+            
       player.view.position.x = origin.x();
       player.view.position.y = origin.y();
       player.view.position.z = origin.z();
       
-      player.body.applyCentralForce(origin.op_mul(-1).normalize().op_mul(10));
+      var originCopy = new Ammo.btVector3(origin.x(), origin.y(), origin.z());
+      player.body.applyCentralForce(originCopy.op_mul(-1).normalize().op_mul(100));
+      player.body.setCenterOfMassTransform(pointAt(player.body, new Ammo.btVector3(0, 0, 0)));
       
       var rotation = transform.getRotation();
       player.view.quaternion.x = rotation.x();
@@ -230,26 +284,60 @@ define([
       
       render();
       stats.update();
+      
+    };
+    
+    var handleKeyEvent = function(which, down) {
+      switch(event.which) {
+        case 87: //W
+          keys.w = down;
+          break;
+        case 65: //A
+          keys.a = down;
+          break;
+        case 83: //S
+          keys.s = down;
+          break;
+        case 68: //D
+          keys.d = down;
+          break;
+        default:
+          break;
+      }
+    }
+    
+    document.body.onkeydown = function(event) {
+      handleKeyEvent(event.which, true);
+    };
+    
+    document.body.onkeyup = function(event) {
+      handleKeyEvent(event.which, false);
     };
     
     document.body.onclick = function(event) {
-      player.body.getWorldTransform(transform);
+      player.body.getMotionState().getWorldTransform(transform);
       
+      // var boxRot = transform.getBasis();
+      // var correctedForce = boxRot.op_mul(relativeForce);
+      // player.body.applyCentralForce(correctedForce);
+
+      // var origin = transform.getOrigin();
+      //             
+      //       var quaternion = new Ammo.btQuaternion();
+      //       var originCopy = new Ammo.btVector3(origin.x(), origin.y(), origin.z());
+      //       var normalizedOrigin = originCopy.op_mul(-1).normalize();
+      //       
+      //       quaternion.setEuler(
+      //         normalizedOrigin.x(),
+      //         normalizedOrigin.y(),
+      //         normalizedOrigin.z()
+      //       );
+      //       transform.setRotation(quaternion);
       var boxRot = transform.getBasis();
       var correctedForce = boxRot.op_mul(relativeForce);
       player.body.applyCentralForce(correctedForce);
       
-      // player.body.getWorldTransform(transform);
-      //       var origin = transform.getOrigin();
-      //       origin.setX(0);
-      //       origin.setY(220);
-      //       origin.setZ(0);
-      //       
-      //       var quaternion = new Ammo.btQuaternion();
-      //       quaternion.setEuler(0, 0.1, 0);
-      //       transform.setRotation(quaternion);
-      //       
-      //       player.body.setCenterOfMassTransform(transform);
+      player.body.setCenterOfMassTransform(pointAt(player.body, new Ammo.btVector3(0, 0, 0)));
       player.body.activate();
     };
     
