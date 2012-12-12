@@ -1,4 +1,4 @@
 gaem
 ====
 
-Moody planetoids n shi-
+Moody planetoids
